@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "npm --prefix Frontend run build",
-    "postinstall": "npm --prefix Frontend install",
+    "build": "npx --prefix Frontend vite build Frontend",
     "start": "node api/index.js"
   },
   "dependencies": {
