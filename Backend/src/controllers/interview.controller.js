@@ -175,6 +175,14 @@ async function generateResumePdfController(req, res) {
             await interviewReport.save();
         }
 
+        if (!pdfBuffer) {
+            return res.status(200).json({
+                message: "PDF rendering in serverless environment unavailable; use client print view",
+                fallbackToPrint: true,
+                html: interviewReport.tailoredResumeHtml
+            });
+        }
+
         res.set({
             "Content-Type": "application/pdf",
             "Content-Disposition":

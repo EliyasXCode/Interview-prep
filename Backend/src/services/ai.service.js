@@ -845,11 +845,12 @@ Keep the resume visually professional and easy to convert to PDF.
             );
 
 
-        const pdfBuffer =
-            await generatePdfFromHtml(
-                jsonContent.html
-            );
-
+        let pdfBuffer = null;
+        try {
+            pdfBuffer = await generatePdfFromHtml(jsonContent.html);
+        } catch (pdfErr) {
+            console.warn("Server PDF rendering failed or skipped:", pdfErr.message);
+        }
 
         return { pdfBuffer, html: jsonContent.html };
 
