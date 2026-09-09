@@ -15,6 +15,7 @@ async function connectToDB(){
     }
     catch(err){
         console.error("MongoDB Atlas Connection Error:", err.message);
+        throw err;
     }
 }
 

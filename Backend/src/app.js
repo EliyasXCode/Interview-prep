@@ -28,6 +28,21 @@ app.use(cors({
 /* require all the routes here  */
 const authRouter = require("./routes/auth.routes")
 const interviewRouter = require("./routes/interview.routes")
+const connectToDB = require("./config/database")
+
+// Ensure MongoDB connection is established before processing API routes (crucial for serverless lambdas)
+app.use(async (req, res, next) => {
+    try {
+        await connectToDB();
+        next();
+    } catch (dbErr) {
+        console.error("Database connection middleware error:", dbErr);
+        res.status(500).json({
+            message: "Database connection failed. Please check MONGO_URI.",
+            error: dbErr.message
+        });
+    }
+});
 
 
 /*using all the routes here */
