@@ -28,8 +28,12 @@ const Register = () => {
                 setErrorMsg("Registration failed. Please verify your details.")
             }
         } catch (err) {
-            const msg = err?.response?.data?.message || "Registration failed. Email or username might already be in use."
-            setErrorMsg(msg)
+            const serverMsg = err?.response?.data?.message;
+            const serverErr = err?.response?.data?.error;
+            const msg = serverMsg 
+                ? (serverErr ? `${serverMsg}: ${serverErr}` : serverMsg)
+                : (err?.message || "Registration failed. Server error occurred.");
+            setErrorMsg(msg);
         }
     }
 

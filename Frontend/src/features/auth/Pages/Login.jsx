@@ -28,8 +28,12 @@ const Login = () => {
                 setErrorMsg("Invalid email or password. Please try again.")
             }
         } catch (err) {
-            const msg = err?.response?.data?.message || "Invalid email or password. Please try again."
-            setErrorMsg(msg)
+            const serverMsg = err?.response?.data?.message;
+            const serverErr = err?.response?.data?.error;
+            const msg = serverMsg 
+                ? (serverErr ? `${serverMsg}: ${serverErr}` : serverMsg)
+                : (err?.message || "Invalid email or password. Please try again.");
+            setErrorMsg(msg);
         }
     }
 
