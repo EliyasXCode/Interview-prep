@@ -20,7 +20,7 @@
     },
     {
       "src": "/assets/(.*)",
-      "dest": "/Frontend/assets/"
+      "dest": "/Frontend/assets/$1"
     },
     {
       "src": "/favicon.svg",
