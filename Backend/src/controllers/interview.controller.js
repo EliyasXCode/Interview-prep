@@ -1,4 +1,3 @@
-const { PDFParse } = require("pdf-parse");
 const {generateInterviewReport, generateResumePdf } = require("../services/ai.service")
 const interviewReportModel = require("../models/interviewReport.model")
 const mongoose = require("mongoose");
@@ -13,7 +12,9 @@ async function generateInterviewReportController(req, res) {
 
         if (req.file && req.file.buffer) {
             try {
-                const parser = new PDFParse({ data: req.file.buffer });
+                const pdfModule = require("pdf-parse");
+                const PDFParseClass = pdfModule.PDFParse || pdfModule;
+                const parser = new PDFParseClass({ data: req.file.buffer });
                 const parsed = await parser.getText();
                 resumeText = (parsed && parsed.text) ? parsed.text.trim() : "";
                 try { await parser.destroy(); } catch (_) {}
@@ -22,6 +23,7 @@ async function generateInterviewReportController(req, res) {
                 console.warn("PDF parse error/warning:", pdfErr.message);
             }
         }
+
 
         const { selfDescription = "", jobDescription } = req.body;
 

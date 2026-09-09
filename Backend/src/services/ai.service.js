@@ -1,11 +1,7 @@
 const { GoogleGenAI } = require("@google/genai");
 const { z } = require("zod");
-let puppeteer;
-try {
-    puppeteer = require("puppeteer");
-} catch (e) {
-    // Puppeteer not installed or not available in current environment
-}
+let puppeteer = null;
+
 
 
 const ai = new GoogleGenAI({
@@ -519,7 +515,8 @@ async function generatePdfFromHtml(htmlContent) {
     try {
         if (!puppeteer) {
             try {
-                puppeteer = require("puppeteer");
+                const pkg = "puppeteer";
+                puppeteer = require(pkg);
             } catch (e) {
                 throw new Error("Puppeteer is not available in this environment. Falling back to browser print.");
             }
