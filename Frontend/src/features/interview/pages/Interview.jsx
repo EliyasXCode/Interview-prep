@@ -287,20 +287,19 @@ const Interview = () => {
     };
 
     const handleResumePrint = async () => {
-        if (resumeHtml) {
-            printResumePdf(resumeHtml);
-        } else {
+        setActiveNav("resume");
+        if (!resumeHtml) {
             setResumeLoading(true);
             try {
                 const html = await getResumePreviewHtml(interviewId);
-                if (html) {
-                    setResumeHtml(html);
-                    printResumePdf(html);
-                }
+                if (html) setResumeHtml(html);
             } finally {
                 setResumeLoading(false);
             }
         }
+        setTimeout(() => {
+            window.print();
+        }, 350);
     };
 
 
@@ -315,11 +314,12 @@ const Interview = () => {
                     <span className="top-role-label">Target Role</span>
                     <h1 className="top-role-title">{report?.title || "Target Position"}</h1>
                 </div>
-                <div className="top-actions">
+                <div className="top-actions" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                     <button
                         onClick={handleResumeDownload}
                         disabled={downloading}
                         className="button download-header-btn"
+                        title="Download ATS Resume PDF directly"
                     >
                         {downloading ? (
                             <span>Generating PDF...</span>
@@ -330,9 +330,28 @@ const Interview = () => {
                                     <polyline points="7 10 12 15 17 10" />
                                     <line x1="12" y1="15" x2="12" y2="3" />
                                 </svg>
-                                Download ATS Resume (PDF)
+                                Download PDF
                             </>
                         )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleResumePrint}
+                        disabled={downloading}
+                        className="button"
+                        style={{
+                            background: '#1f2937',
+                            color: '#f9fafb',
+                            border: '1px solid #374151',
+                            padding: '0.5rem 0.85rem',
+                            borderRadius: '0.5rem',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                        title="Open print preview to save as clean vector PDF"
+                    >
+                        🖨️ Print / Save PDF
                     </button>
                 </div>
             </div>
@@ -357,17 +376,35 @@ const Interview = () => {
                     <div className="nav-resume-card">
                         <h4>ATS-Optimized Resume</h4>
                         <p>Download your tailored resume in ATS-friendly format</p>
-                        <button
-                            onClick={handleResumeDownload}
-                            disabled={downloading}
-                            className="button primary-button resume-action-btn"
-                        >
-                            {downloading ? "Generating..." : "Download PDF"}
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.4rem' }}>
+                            <button
+                                onClick={handleResumeDownload}
+                                disabled={downloading}
+                                className="button primary-button resume-action-btn"
+                            >
+                                {downloading ? "Generating..." : "Download PDF"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleResumePrint}
+                                disabled={downloading}
+                                className="button secondary-button"
+                                style={{
+                                    padding: '0.45rem',
+                                    fontSize: '0.78rem',
+                                    background: '#1f2937',
+                                    color: '#e5e7eb',
+                                    border: '1px solid #374151'
+                                }}
+                            >
+                                🖨️ Print / Save PDF
+                            </button>
+                        </div>
                     </div>
                 </nav>
 
                 <div className="interview-divider" />
+
 
                 {/* CENTER CONTENT */}
                 <main className="interview-content">

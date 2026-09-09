@@ -200,116 +200,87 @@ export const useInterview = () => {
             const html2pdfModule = await import("html2pdf.js");
             const html2pdf = html2pdfModule.default || html2pdfModule;
 
-            // 3. Determine capture target: use visible resume-paper if available, else temporary top-level container
-            const existingPaper = document.querySelector(".resume-paper");
-            let targetElement = null;
-            let tempCreated = false;
+            // 3. Create an explicit render container with non-negative coordinates and forced dark text
+            const container = document.createElement("div");
+            container.id = "ats-pdf-render-canvas";
+            container.style.width = "780px";
+            container.style.backgroundColor = "#ffffff";
+            container.style.color = "#111827";
+            container.style.padding = "20px 26px";
+            container.style.boxSizing = "border-box";
+            container.style.fontFamily = "Arial, Helvetica, sans-serif";
+            container.style.position = "absolute";
+            container.style.top = "0px";
+            container.style.left = "0px";
+            container.style.zIndex = "-1";
+            container.innerHTML = `
+                <style>
+                    #ats-pdf-render-canvas, #ats-pdf-render-canvas * {
+                        color: #111827 !important;
+                        background: transparent !important;
+                    }
+                    #ats-pdf-render-canvas h1, #ats-pdf-render-canvas h2, #ats-pdf-render-canvas h3 {
+                        color: #111827 !important;
+                        margin-top: 6px !important;
+                        margin-bottom: 4px !important;
+                    }
+                    #ats-pdf-render-canvas p, #ats-pdf-render-canvas li, #ats-pdf-render-canvas span, #ats-pdf-render-canvas div {
+                        color: #111827 !important;
+                        line-height: 1.35 !important;
+                    }
+                    #ats-pdf-render-canvas hr {
+                        border: none !important;
+                        border-top: 1px solid #9ca3af !important;
+                        margin: 6px 0 !important;
+                    }
+                </style>
+                ${styleTags}
+                <div style="width: 100%; color: #111827 !important; background: #ffffff !important;">
+                    ${bodyHtml}
+                </div>
+            `;
+            document.body.appendChild(container);
 
-            if (existingPaper && existingPaper.innerText.trim().length > 50) {
-                targetElement = existingPaper;
-            } else {
-                targetElement = document.createElement("div");
-                targetElement.id = "ats-pdf-render-canvas";
-                targetElement.style.position = "fixed";
-                targetElement.style.top = "0";
-                targetElement.style.left = "0";
-                targetElement.style.width = "794px"; // Standard A4 width at 96 DPI
-                targetElement.style.minHeight = "1123px";
-                targetElement.style.backgroundColor = "#ffffff";
-                targetElement.style.color = "#111111";
-                targetElement.style.padding = "24px 30px";
-                targetElement.style.boxSizing = "border-box";
-                targetElement.style.fontFamily = "Arial, Helvetica, sans-serif";
-                targetElement.style.zIndex = "99999"; // Temporarily in view to ensure html2canvas paints pixels
-                targetElement.innerHTML = `
-                    <style>
-                        *, *:before, *:after { box-sizing: border-box !important; }
-                        body, div, p, li, span, h1, h2, h3, h4 { color: #111111 !important; }
-                    </style>
-                    ${styleTags}
-                    <div style="width: 100%; color: #111111; background: #ffffff;">
-                        ${bodyHtml}
-                    </div>
-                `;
-                document.body.appendChild(targetElement);
-                tempCreated = true;
-
-                // Allow 100ms for layout & style evaluation
-                await new Promise(r => setTimeout(r, 100));
-            }
+            // Wait 150ms for styles to calculate
+            await new Promise(r => setTimeout(r, 150));
 
             const roleName = report?.title ? report.title.replace(/[^a-zA-Z0-9_-]/g, "_") : "Tailored";
             const opt = {
-                margin: [6, 8, 6, 8],
+                margin: [6, 6, 6, 6],
                 filename: `ATS_Resume_${roleName}.pdf`,
                 image: { type: "jpeg", quality: 0.98 },
                 html2canvas: {
                     scale: 2,
                     useCORS: true,
-                    letterRendering: true,
                     logging: false,
                     backgroundColor: "#ffffff",
                     scrollY: 0,
                     scrollX: 0
                 },
-                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-                pagebreak: { mode: ["avoid-all", "css", "legacy"] }
+                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
             };
 
-            await html2pdf().set(opt).from(targetElement).save();
+            await html2pdf().set(opt).from(container).save();
 
-            // Cleanup if temporary container was created
-            if (tempCreated && targetElement && targetElement.parentNode) {
-                targetElement.parentNode.removeChild(targetElement);
+            // Cleanup
+            if (container && container.parentNode) {
+                container.parentNode.removeChild(container);
             }
 
         } catch (error) {
             console.error("Resume PDF generation failed:", error);
-            // Fallback to native print preview
-            try {
-                const rawHtml = providedHtml || await getResumePreviewHtml(interviewReportId);
-                if (rawHtml) {
-                    printResumePdf(rawHtml);
-                    return;
-                }
-            } catch (fallbackErr) {
-                console.error("Fallback print also failed:", fallbackErr);
-            }
-            alert("Could not generate PDF directly. Please use 'Print / Save as PDF' to export your resume.");
+            // Fallback: trigger native browser print preview
+            window.print();
         } finally {
             setLoading(false);
         }
     };
 
-    // Native Iframe-based Print to PDF (Zero popup blocker issues, clean vector text)
+    // Native Browser Print to PDF (Zero popup blocker issues, 100% clean vector text)
     const printResumePdf = (htmlContent) => {
-        if (!htmlContent) return;
-
-        const { fullDocument } = normalizeResumeHtml(htmlContent);
-
-        let iframe = document.getElementById("ats-resume-print-frame");
-        if (!iframe) {
-            iframe = document.createElement("iframe");
-            iframe.id = "ats-resume-print-frame";
-            iframe.style.position = "fixed";
-            iframe.style.right = "0";
-            iframe.style.bottom = "0";
-            iframe.style.width = "0";
-            iframe.style.height = "0";
-            iframe.style.border = "none";
-            document.body.appendChild(iframe);
-        }
-
-        const doc = iframe.contentWindow.document;
-        doc.open();
-        doc.write(fullDocument);
-        doc.close();
-
-        setTimeout(() => {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-        }, 350);
+        window.print();
     };
+
 
 
 

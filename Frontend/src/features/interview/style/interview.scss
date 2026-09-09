@@ -1311,3 +1311,84 @@ $severity-low: #3fb950;
         grid-template-columns: 1fr !important;
     }
 }
+
+// ── Print Stylesheet for 100% Vector PDF Output ───────────────────────────────
+@media print {
+    // Hide all dark theme UI elements, headers, sidebars, buttons
+    html, body {
+        background: #ffffff !important;
+        color: #111827 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .interview-nav,
+    .interview-sidebar,
+    .report-top-bar,
+    .interview-divider,
+    .header-button-group,
+    .content-header,
+    .audit-metrics-grid,
+    .audit-resume-cta,
+    .audit-card,
+    .keywords-audit-grid,
+    .q-list,
+    .roadmap-list,
+    .skills-grid,
+    .resume-action-prompt,
+    .resume-loading-card {
+        display: none !important;
+    }
+
+    .interview-page,
+    .interview-layout,
+    .interview-content,
+    .resume-preview-section,
+    .resume-paper-container {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        border: none !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+    }
+
+    .resume-paper {
+        margin: 0 auto !important;
+        padding: 8mm 12mm !important;
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: auto !important;
+        background: #ffffff !important;
+        color: #111827 !important;
+
+        * {
+            color: #111827 !important;
+            background: transparent !important;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: #111827 !important;
+            page-break-after: avoid;
+        }
+
+        p, li, div {
+            color: #111827 !important;
+            page-break-inside: avoid;
+        }
+
+        hr {
+            border-color: #d1d5db !important;
+        }
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 8mm 10mm;
+    }
+}
