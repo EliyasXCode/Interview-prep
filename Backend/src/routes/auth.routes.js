@@ -9,6 +9,22 @@ const authmiddleware = require("../middlewares/auth.middleware")
  * @access Public
  */
 
+authRouter.get("/health", async (req, res) => {
+    try {
+        const mongoose = require("mongoose");
+        res.json({
+            status: "ok",
+            hasMongoUri: !!process.env.MONGO_URI,
+            hasJwtSecret: !!process.env.JWT_SECRET,
+            hasGeminiKey: !!process.env.GOOGLE_GENAI_API_KEY,
+            dbReadyState: mongoose.connection.readyState,
+            dbName: mongoose.connection.name
+        });
+    } catch (e) {
+        res.status(500).json({ status: "error", error: e.message });
+    }
+});
+
 authRouter.post("/register", authController.registerUserController)
 
 /**
