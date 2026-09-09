@@ -48,4 +48,14 @@ app.use(async (req, res, next) => {
 /*using all the routes here */
 app.use("/api/auth", authRouter)
 app.use("/api/interview", interviewRouter)
+
+// Global Express error handler for unhandled exceptions
+app.use((err, req, res, next) => {
+    console.error("UNHANDLED EXPRESS ERROR:", err);
+    res.status(err.status || 500).json({
+        message: err.message || "Internal server error",
+        error: err.toString()
+    });
+});
+
 module.exports = app 
