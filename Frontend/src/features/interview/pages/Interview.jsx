@@ -203,8 +203,10 @@ const Interview = () => {
         report,
         loading,
         getResumePdf,
-        getResumePreviewHtml
+        getResumePreviewHtml,
+        printResumePdf
     } = useInterview();
+
 
     const { interviewId } = useParams();
     const navigate = useNavigate();
@@ -278,11 +280,29 @@ const Interview = () => {
         if (!interviewId) return;
         setDownloading(true);
         try {
-            await getResumePdf(interviewId);
+            await getResumePdf(interviewId, resumeHtml);
         } finally {
             setDownloading(false);
         }
     };
+
+    const handleResumePrint = async () => {
+        if (resumeHtml) {
+            printResumePdf(resumeHtml);
+        } else {
+            setResumeLoading(true);
+            try {
+                const html = await getResumePreviewHtml(interviewId);
+                if (html) {
+                    setResumeHtml(html);
+                    printResumePdf(html);
+                }
+            } finally {
+                setResumeLoading(false);
+            }
+        }
+    };
+
 
     return (
         <div className="interview-page">
@@ -647,15 +667,27 @@ const Interview = () => {
                                         Formatted in strict ATS-compliant single-column layout with optimized job keywords
                                     </p>
                                 </div>
-                                <div className="header-button-group">
+                                <div className="header-button-group" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                                     <button
+                                        type="button"
                                         onClick={handleResumeDownload}
                                         disabled={downloading}
                                         className="button primary-button"
                                     >
                                         {downloading ? "Generating PDF..." : "📥 Download ATS PDF"}
                                     </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleResumePrint}
+                                        disabled={downloading || resumeLoading}
+                                        className="button secondary-button"
+                                        style={{ background: '#374151', color: '#f3f4f6', border: '1px solid #4b5563' }}
+                                        title="Print directly or save as vector PDF"
+                                    >
+                                        🖨️ Print / Save as PDF
+                                    </button>
                                 </div>
+
                             </div>
 
                             {resumeLoading ? (

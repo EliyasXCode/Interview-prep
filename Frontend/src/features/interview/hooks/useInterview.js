@@ -124,68 +124,133 @@ export const useInterview = () => {
     };
 
 
-    // Generate / Download Resume PDF
-    // Generate / Download Resume PDF with fallback
-    const getResumePdf = async (interviewReportId) => {
+    // Generate / Download ATS Resume in Real PDF Format using html2pdf.js
+    const getResumePdf = async (interviewReportId, providedHtml = null) => {
         setLoading(true);
 
         try {
-            const response = await generateResumePdf({
-                interviewReportId
-            });
-
-            // Check if response is JSON error returned as blob
-            if (response.type === "application/json") {
-                const text = await response.text();
-                const errJson = JSON.parse(text);
-                throw new Error(errJson.message || "Failed to generate server PDF");
+            // 1. Obtain the tailored resume HTML
+            let html = providedHtml;
+            if (!html) {
+                html = await getResumePreviewHtml(interviewReportId);
             }
 
-            const url = window.URL.createObjectURL(
-                new Blob(
-                    [response],
-                    {
-                        type: "application/pdf"
-                    }
-                )
-            );
+            if (!html) {
+                throw new Error("Resume content is not available yet. Please try again.");
+            }
 
-            const link = document.createElement("a");
-            link.href = url;
-            link.setAttribute(
-                "download",
-                `resume_${interviewReportId}.pdf`
-            );
+            // 2. Dynamically load html2pdf.js
+            const html2pdfModule = await import("html2pdf.js");
+            const html2pdf = html2pdfModule.default || html2pdfModule;
 
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
+            // 3. Create a clean A4 wrapper in the DOM for high-resolution rendering
+            const wrapper = document.createElement("div");
+            wrapper.style.position = "fixed";
+            wrapper.style.left = "-9999px";
+            wrapper.style.top = "0";
+            wrapper.style.width = "800px";
+            wrapper.style.background = "#ffffff";
+            wrapper.style.color = "#111827";
+            wrapper.style.padding = "24px 32px";
+            wrapper.style.boxSizing = "border-box";
+            wrapper.style.fontFamily = "Arial, Helvetica, sans-serif";
+            wrapper.innerHTML = html;
+
+            document.body.appendChild(wrapper);
+
+            const roleName = report?.title ? report.title.replace(/[^a-zA-Z0-9_-]/g, "_") : "Tailored";
+            const opt = {
+                margin: [8, 8, 8, 8],
+                filename: `ATS_Resume_${roleName}.pdf`,
+                image: { type: "jpeg", quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    logging: false,
+                    windowWidth: 800
+                },
+                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                pagebreak: { mode: ["avoid-all", "css", "legacy"] }
+            };
+
+            await html2pdf().set(opt).from(wrapper).save();
+
+            // Cleanup DOM
+            document.body.removeChild(wrapper);
 
         } catch (error) {
-            console.warn("Server PDF download failed, falling back to instant print preview:", error);
+            console.error("Resume PDF generation failed:", error);
+            // Fallback to iframe-based native print dialog
             try {
-                // Fetch preview HTML and open clean print window
-                const previewHtml = await getResumePreviewHtml(interviewReportId);
-                if (previewHtml) {
-                    const printWindow = window.open("", "_blank");
-                    if (printWindow) {
-                        printWindow.document.write(previewHtml);
-                        printWindow.document.close();
-                        setTimeout(() => {
-                            printWindow.focus();
-                            printWindow.print();
-                        }, 500);
-                        return;
-                    }
+                const html = providedHtml || await getResumePreviewHtml(interviewReportId);
+                if (html) {
+                    printResumePdf(html);
+                    return;
                 }
-            } catch (fallbackError) {
-                console.error("Print preview fallback failed:", fallbackError);
+            } catch (fallbackErr) {
+                console.error("Fallback print also failed:", fallbackErr);
             }
-            alert("Could not download PDF directly. Please view the ATS Resume tab to inspect and print your resume.");
+            alert("Could not generate PDF directly. Please click 'Print / Save as PDF' to export your resume.");
         } finally {
             setLoading(false);
         }
+    };
+
+    // Native Iframe-based Print to PDF (Zero popup blocker issues)
+    const printResumePdf = (htmlContent) => {
+        if (!htmlContent) return;
+
+        let iframe = document.getElementById("ats-resume-print-frame");
+        if (!iframe) {
+            iframe = document.createElement("iframe");
+            iframe.id = "ats-resume-print-frame";
+            iframe.style.position = "fixed";
+            iframe.style.right = "0";
+            iframe.style.bottom = "0";
+            iframe.style.width = "0";
+            iframe.style.height = "0";
+            iframe.style.border = "none";
+            document.body.appendChild(iframe);
+        }
+
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>ATS Tailored Resume</title>
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 8mm 10mm;
+                    }
+                    *, *:before, *:after {
+                        box-sizing: border-box !important;
+                    }
+                    body {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        font-family: Arial, Helvetica, sans-serif !important;
+                        color: #000 !important;
+                        background: #fff !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                </style>
+            </head>
+            <body>
+                ${htmlContent}
+            </body>
+            </html>
+        `);
+        doc.close();
+
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        }, 300);
     };
 
 
@@ -224,7 +289,8 @@ export const useInterview = () => {
         getReportById,
         getReports,
         getResumePdf,
-        getResumePreviewHtml
+        getResumePreviewHtml,
+        printResumePdf
     };
 
 };
