@@ -228,22 +228,29 @@ async function previewResumeHtmlController(req, res) {
             });
         }
 
-        if (interviewReport.tailoredResumeHtml) {
+        const isHtmlValid = interviewReport.tailoredResumeHtml &&
+            interviewReport.tailoredResumeHtml.length > 1200 &&
+            interviewReport.tailoredResumeHtml.includes("</html>") &&
+            req.query.regenerate !== "true";
+
+        if (isHtmlValid) {
             return res.status(200).json({
                 html: interviewReport.tailoredResumeHtml
             });
         }
 
+        console.log(`Generating fresh complete ATS resume for report ${interviewReportId}...`);
         const { html } = await generateResumePdf({
-            resume: interviewReport.resume,
-            jobDescription: interviewReport.jobDescription,
-            selfDescription: interviewReport.selfDescription
+            resume: interviewReport.resume || "",
+            jobDescription: interviewReport.jobDescription || "",
+            selfDescription: (interviewReport.selfDescription || "") + `\nCandidate Name: ${req.user.username || "Candidate"}`
         });
 
         interviewReport.tailoredResumeHtml = html;
         await interviewReport.save();
 
         return res.status(200).json({ html });
+
     } catch (error) {
         console.error("PREVIEW RESUME ERROR:", error);
         return res.status(500).json({
