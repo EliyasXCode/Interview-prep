@@ -9,7 +9,11 @@ async function connectToDB(){
         return;
     }
     try{
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGO_URI, {
+            dbName: "interview_prep_db",
+            serverSelectionTimeoutMS: 5000,
+            bufferCommands: false
+        });
         isConnected = true;
         console.log("Connected to MongoDB Atlas Database successfully");
     }
