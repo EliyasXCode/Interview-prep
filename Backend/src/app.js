@@ -25,29 +25,74 @@ app.use(cors({
 }))
 
 
-/* require all the routes here  */
-const authRouter = require("./routes/auth.routes")
-const interviewRouter = require("./routes/interview.routes")
-const connectToDB = require("./config/database")
+const mongoose = require("mongoose");
+const connectToDB = require("./config/database");
 
-// Ensure MongoDB connection is established before processing API routes (crucial for serverless lambdas)
+// Normalization middleware to handle Vercel serverless rewrites
+app.use((req, res, next) => {
+    // If Vercel passed matched path in header, use it
+    if (req.headers["x-matched-path"] && !req.url.includes("/auth") && !req.url.includes("/interview")) {
+        req.url = req.headers["x-matched-path"];
+    }
+    // If Vercel rewrote path as /api/index.js or /api/index.js/..., clean it up
+    if (req.url.startsWith("/api/index.js")) {
+        req.url = req.url.replace(/^\/api\/index\.js/, "") || "/";
+    }
+    next();
+});
+
+// Immediate Health Check (does NOT require or wait for DB connection)
+const healthHandler = (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "AI Interview Preparation Platform API",
+        time: new Date().toISOString(),
+        environment: {
+            hasMongoUri: Boolean(process.env.MONGO_URI),
+            hasJwtSecret: Boolean(process.env.JWT_SECRET),
+            hasGeminiKey: Boolean(process.env.GOOGLE_GENAI_API_KEY)
+        },
+        database: {
+            readyState: mongoose.connection.readyState,
+            status: ["disconnected", "connected", "connecting", "disconnecting"][mongoose.connection.readyState] || "unknown"
+        }
+    });
+};
+
+app.get("/", healthHandler);
+app.get("/api", healthHandler);
+app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
+
+/* require all the routes here  */
+const authRouter = require("./routes/auth.routes");
+const interviewRouter = require("./routes/interview.routes");
+
+// Connect to MongoDB before processing API routes, with graceful error handling
 app.use(async (req, res, next) => {
+    // Fast path for health checks
+    if (req.path === "/" || req.path === "/health" || req.path.endsWith("/health")) {
+        return next();
+    }
     try {
         await connectToDB();
         next();
     } catch (dbErr) {
-        console.error("Database connection middleware error:", dbErr);
-        res.status(500).json({
-            message: "Database connection failed. Please check MONGO_URI.",
+        console.error("Database connection middleware error:", dbErr.message);
+        return res.status(503).json({
+            success: false,
+            message: "Database connection failed. Please ensure MONGO_URI is configured in Vercel settings and MongoDB Atlas allows connections from all IPs (0.0.0.0/0).",
             error: dbErr.message
         });
     }
 });
 
+/* Mount routes with and without /api prefix to support all Vercel rewrite patterns */
+app.use("/api/auth", authRouter);
+app.use("/auth", authRouter);
 
-/*using all the routes here */
-app.use("/api/auth", authRouter)
-app.use("/api/interview", interviewRouter)
+app.use("/api/interview", interviewRouter);
+app.use("/interview", interviewRouter);
 
 // Global Express error handler for unhandled exceptions
 app.use((err, req, res, next) => {
@@ -58,4 +103,5 @@ app.use((err, req, res, next) => {
     });
 });
 
-module.exports = app 
+module.exports = app;
+ 

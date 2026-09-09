@@ -1,26 +1,36 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
+let cachedPromise = null;
 
-
-let isConnected = false;
-
-async function connectToDB(){
-    if (isConnected || mongoose.connection.readyState >= 1) {
-        return;
+async function connectToDB() {
+    if (mongoose.connection.readyState === 1) {
+        return mongoose.connection;
     }
-    try{
-        await mongoose.connect(process.env.MONGO_URI, {
+
+    if (!process.env.MONGO_URI) {
+        throw new Error("MONGO_URI is not defined in environment variables. Please configure MONGO_URI in your Vercel Project Settings.");
+    }
+
+    if (!cachedPromise) {
+        const opts = {
             dbName: "interview_prep_db",
-            serverSelectionTimeoutMS: 5000,
-            bufferCommands: false
-        });
-        isConnected = true;
-        console.log("Connected to MongoDB Atlas Database successfully");
+            serverSelectionTimeoutMS: 8000,
+            connectTimeoutMS: 8000
+        };
+
+        cachedPromise = mongoose.connect(process.env.MONGO_URI, opts)
+            .then((m) => {
+                console.log("Connected to MongoDB Atlas Database successfully");
+                return m;
+            })
+            .catch((err) => {
+                cachedPromise = null;
+                console.error("MongoDB Atlas Connection Error:", err.message);
+                throw err;
+            });
     }
-    catch(err){
-        console.error("MongoDB Atlas Connection Error:", err.message);
-        throw err;
-    }
+
+    return cachedPromise;
 }
 
-module.exports = connectToDB;
+module.exports = connectToDB;
